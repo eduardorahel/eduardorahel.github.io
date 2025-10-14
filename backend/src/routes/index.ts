@@ -1,0 +1,15 @@
+import { Router } from "express";
+
+import { authRouter } from "./auth.js";
+import { datasetsRouter } from "./datasets.js";
+
+const router = Router();
+
+router.get("/health", (_req, res) => {
+  res.json({ status: "ok" });
+});
+
+router.use("/auth", authRouter);
+router.use("/datasets", datasetsRouter);
+
+export { router };

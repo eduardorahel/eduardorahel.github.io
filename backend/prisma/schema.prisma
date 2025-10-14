@@ -1,0 +1,143 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  name      String
+  role      Role     @default(ANALYST)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  people    Person[]
+  imports   ImportLog[]
+  datasets  Dataset[]
+  accessLog AccessLog[]
+}
+
+model Person {
+  id          String   @id @default(cuid())
+  type        PersonType
+  name        String
+  document    String   // CPF or CNPJ
+  email       String?
+  phone       String?
+  address     String?
+  customJson  Json?
+  ownerId     String
+  owner       User     @relation(fields: [ownerId], references: [id])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  deletedAt   DateTime?
+
+  @@index([ownerId])
+  @@index([document])
+}
+
+model ImportLog {
+  id        String   @id @default(cuid())
+  ownerId   String
+  owner     User     @relation(fields: [ownerId], references: [id])
+  fileName  String
+  tableName String
+  status    String
+  details   String?
+  createdAt DateTime @default(now())
+
+  @@index([ownerId])
+}
+
+enum Role {
+  ADMIN
+  MANAGER
+  ANALYST
+}
+
+enum PersonType {
+  NATURAL
+  LEGAL
+}
+
+/// Dataset metadata for imported files and dynamic tables
+model Dataset {
+  id               String          @id @default(cuid())
+  ownerId          String
+  owner            User            @relation(fields: [ownerId], references: [id])
+  name             String
+  originalFileName String
+  tableName        String
+  primaryKey       String
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+  columns          DatasetColumn[]
+  relationsFrom    DatasetRelation[] @relation("relations_from")
+  relationsTo      DatasetRelation[] @relation("relations_to")
+
+  @@unique([ownerId, tableName])
+  @@index([ownerId])
+}
+
+model DatasetColumn {
+  id          String       @id @default(cuid())
+  datasetId   String
+  dataset     Dataset      @relation(fields: [datasetId], references: [id])
+  name        String
+  dataType    ColumnType
+  isNullable  Boolean      @default(true)
+  isUnique    Boolean      @default(false)
+  isSensitive Boolean      @default(false)
+  maskPattern String?
+
+  @@unique([datasetId, name])
+  @@index([datasetId])
+}
+
+model DatasetRelation {
+  id             String          @id @default(cuid())
+  fromDatasetId  String
+  toDatasetId    String
+  fromDataset    Dataset         @relation("relations_from", fields: [fromDatasetId], references: [id])
+  toDataset      Dataset         @relation("relations_to", fields: [toDatasetId], references: [id])
+  fromColumn     String
+  toColumn       String
+  cardinality    RelationshipType @default(MANY_TO_ONE)
+  createdAt      DateTime        @default(now())
+
+  @@index([fromDatasetId])
+  @@index([toDatasetId])
+}
+
+model AccessLog {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  action    String   // e.g., IMPORT, VIEW, EXPORT, QUERY
+  resource  String   // e.g., dataset:tableName, person:id
+  details   String?
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+enum ColumnType {
+  STRING
+  NUMBER
+  BOOLEAN
+  DATE
+  DATETIME
+  JSON
+}
+
+enum RelationshipType {
+  ONE_TO_ONE
+  ONE_TO_MANY
+  MANY_TO_ONE
+  MANY_TO_MANY
+}
