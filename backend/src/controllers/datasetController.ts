@@ -11,6 +11,7 @@ import {
   listDatasets,
   parsePreview,
 } from "../services/datasetService.js";
+import { logAccess } from "../utils/audit.js";
 import { getDatasetMaskingMap, applyMaskingToRow } from "../utils/masking.js";
 
 const uploadDir = process.env.UPLOAD_DIR || "uploads";
@@ -31,6 +32,7 @@ export async function previewHandler(req: Request, res: Response) {
     const file = (req as any).file as Express.Multer.File | undefined;
     if (!file) return res.status(400).json({ error: "File required" });
     const preview = parsePreview(file.path);
+    await logAccess(req.user!.id, "PREVIEW", `file:${file.originalname}`);
     return res.json({ ...preview, filePath: file.path, originalFileName: file.originalname });
   } catch (err: any) {
     return res.status(400).json({ error: err.message || "Preview failed" });
@@ -41,6 +43,7 @@ export async function importHandler(req: Request, res: Response) {
   try {
     const { originalFileName, ...payload } = req.body;
     const dataset = await importDataset(req.user!.id, originalFileName, payload);
+    await logAccess(req.user!.id, "IMPORT", `dataset:${dataset.tableName}`);
     return res.status(201).json(dataset);
   } catch (err: any) {
     return res.status(400).json({ error: err.message || "Import failed" });
@@ -60,6 +63,7 @@ export async function dataHandler(req: Request, res: Response) {
     const result = await getDatasetData(req.user!.id, id, page, pageSize);
     const { data, dataset, total } = result as any;
     const maskingMap = await getDatasetMaskingMap(dataset.id);
+    await logAccess(req.user!.id, "VIEW", `dataset:${dataset.tableName}`);
     const masked = data.map((row: any) => applyMaskingToRow(row, maskingMap, req.user!.role));
     return res.json({ data: masked, total });
   } catch (err: any) {
