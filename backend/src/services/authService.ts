@@ -55,5 +55,5 @@ function signToken(id: string, role: "ADMIN" | "MANAGER" | "ANALYST") {
   const secret = secretEnv as Secret;
   const options: SignOptions = { expiresIn: (process.env.JWT_EXPIRES_IN as any) ?? "1d" };
   const token = jwt.sign({ id, role }, secret, options);
-  return { token, role };
+  return { token, role, userId: id };
 }

@@ -142,6 +142,12 @@ export async function importDataset(
     pkSet.add(key);
   }
 
+  // Ensure primary key column exists in import schema
+  const hasPkColumn = data.columns.some((c) => sanitizeIdentifier(c.name) === pk);
+  if (!hasPkColumn) {
+    throw new Error("Primary key column not present in column definitions");
+  }
+
   // Insert rows in batches
   const columnNames = data.columns.map((c) => sanitizeIdentifier(c.name));
   const quotedCols = columnNames.map((c) => quoteIdentifier(c)).join(", ");
